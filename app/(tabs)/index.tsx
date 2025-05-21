@@ -1,7 +1,8 @@
 import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Link } from 'expo-router';
+import { Pressable } from 'react-native';
+import { StyleSheet } from 'react-native';
 
-import { HelloWave } from '@/components/HelloWave';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -13,42 +14,43 @@ export default function HomeScreen() {
       headerImage={
         <Image
           source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
+          style={styles.headerImage}
         />
       }>
       <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
+        <ThemedText type="title">Receipt Scanner</ThemedText>
+        <ThemedText style={styles.subtitle}>Your Digital Receipt Manager</ThemedText>
       </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
+
+      <Link href="/(tabs)/scan" asChild>
+        <Pressable style={({ pressed }) => [
+          styles.scanButton,
+          pressed && styles.scanButtonPressed
+        ]}>
+          <ThemedText style={styles.scanButtonText}>Scan Receipt</ThemedText>
+        </Pressable>
+      </Link>
+
+      <ThemedView style={styles.sectionContainer}>
+        <ThemedText type="subtitle">Quick Actions</ThemedText>
+        <ThemedView style={styles.actionContainer}>
+          <ThemedText>• Scan a new receipt</ThemedText>
+          <ThemedText>• View recent scans</ThemedText>
+          <ThemedText>• Check your statistics</ThemedText>
+        </ThemedView>
       </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
+
+      <ThemedView style={styles.sectionContainer}>
+        <ThemedText type="subtitle">Recent Activity</ThemedText>
+        <ThemedView style={styles.activityContainer}>
+          <ThemedText>Your recent scans will appear here</ThemedText>
+        </ThemedView>
       </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
+
+      <ThemedView style={styles.sectionContainer}>
+        <ThemedText type="subtitle">Getting Started</ThemedText>
+        <ThemedText style={styles.description}>
+          Use the camera button to scan your first receipt. We'll help you organize and track your expenses automatically.
         </ThemedText>
       </ThemedView>
     </ParallaxScrollView>
@@ -57,19 +59,62 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   titleContainer: {
-    flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginBottom: 24,
   },
-  stepContainer: {
+  subtitle: {
+    opacity: 0.7,
+    fontSize: 16,
+  },
+  sectionContainer: {
+    gap: 12,
+    marginBottom: 24,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  actionContainer: {
     gap: 8,
-    marginBottom: 8,
   },
-  reactLogo: {
+  activityContainer: {
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.03)',
+  },
+  description: {
+    lineHeight: 20,
+  },
+  headerImage: {
     height: 178,
     width: 290,
     bottom: 0,
     left: 0,
     position: 'absolute',
+  },
+  scanButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  scanButtonPressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.98 }],
+  },
+  scanButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
   },
 });
