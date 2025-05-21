@@ -1,15 +1,16 @@
-import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
-import { useRef, useState } from 'react';
-import { Button, StyleSheet, Text, TouchableOpacity, View, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { CameraType, CameraView, useCameraPermissions } from 'expo-camera';
+import { useRouter } from 'expo-router';
+import { useRef, useState } from 'react';
+import { Button, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ScanScreen() {
     const [facing, setFacing] = useState<CameraType>('back');
     const [permission, requestPermission] = useCameraPermissions();
     const cameraRef = useRef<CameraView | null>(null);
     const [photoData, setPhotoData] = useState<string | null>(null);
-    const [resultText, setResultText] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+    const router = useRouter();
   
     if (!permission) {
       // Camera permissions are still loading.
@@ -33,7 +34,6 @@ export default function ScanScreen() {
     async function takePicture() {
       if (cameraRef.current) {
         setLoading(true);
-        setResultText(null);
         const pic = await cameraRef.current.takePictureAsync({
           quality: 0.2, // Lower quality to reduce size
           base64: true,
@@ -68,9 +68,10 @@ export default function ScanScreen() {
           const outputText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "No result found.";
           // Save to AsyncStorage
           await AsyncStorage.setItem('lastGeminiResult', outputText);
-          setResultText("Saved to local storage.");
+          // Navigate to receipt page
+          router.push('/receipt');
         } catch (e) {
-          setResultText("Error analyzing image." + e);
+          console.error("Error analyzing image:", e);
         } finally {
           setLoading(false);
         }
@@ -89,11 +90,6 @@ export default function ScanScreen() {
             </TouchableOpacity>
           </View>
         </CameraView>
-        {resultText && (
-          <ScrollView style={styles.resultBox} contentContainerStyle={{padding: 16}}>
-            <Text style={styles.resultText}>{resultText}</Text>
-          </ScrollView>
-        )}
       </View>
     );
   }
@@ -133,15 +129,5 @@ export default function ScanScreen() {
       fontSize: 24,
       fontWeight: 'bold',
       color: 'white',
-    },
-    resultBox: {
-      maxHeight: 200,
-      backgroundColor: '#fff',
-      borderTopWidth: 1,
-      borderColor: '#eee',
-    },
-    resultText: {
-      color: '#222',
-      fontSize: 16,
     },
   });
