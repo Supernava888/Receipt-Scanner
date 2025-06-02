@@ -1,120 +1,267 @@
-import { Image } from 'expo-image';
-import { Link } from 'expo-router';
-import { Pressable } from 'react-native';
-import { StyleSheet } from 'react-native';
+import { AntDesign, MaterialCommunityIcons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
+import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
+import { Link, useRouter } from 'expo-router';
+import React, { useEffect } from 'react';
+import {
+  Dimensions,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import 'react-native-reanimated';
+import Animated, {
+  BounceIn,
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+const FOOD_EMOJIS: string[] = [
+  '🍓', '🥕', '🍔', '🍇', '🧀', '🍍', '🥬', '🍞', '🍕', '🍊',
+  '🥑', '🍩', '🍒', '🧁', '🌮', '🥯', '🍜', '🧃', '🥭', '🍣',
+];
 
-export default function HomeScreen() {
+type EmojiProps = {
+  emoji: string;
+  left: number;
+  delay: number;
+  duration: number;
+  size: number;
+  opacity: number;
+};
+
+function FallingEmoji(props: EmojiProps): React.ReactElement {
+  const translateY = useSharedValue(-80);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      translateY.value = withRepeat(
+        withTiming(1000, { duration: props.duration }),
+        -1,
+        false
+      );
+    }, props.delay);
+    return () => clearTimeout(timeout);
+  }, [props.delay, props.duration, translateY]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    position: 'absolute',
+    left: props.left,
+    transform: [{ translateY: translateY.value }],
+    opacity: props.opacity,
+  }));
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.headerImage}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Receipt Scanner</ThemedText>
-        <ThemedText style={styles.subtitle}>Your Digital Receipt Manager</ThemedText>
-      </ThemedView>
-
-      <Link href="/(tabs)/scan" asChild>
-        <Pressable style={({ pressed }) => [
-          styles.scanButton,
-          pressed && styles.scanButtonPressed
-        ]}>
-          <ThemedText style={styles.scanButtonText}>Scan Receipt</ThemedText>
-        </Pressable>
-      </Link>
-
-      <ThemedView style={styles.sectionContainer}>
-        <ThemedText type="subtitle">Quick Actions</ThemedText>
-        <ThemedView style={styles.actionContainer}>
-          <ThemedText>• Scan a new receipt</ThemedText>
-          <ThemedText>• View recent scans</ThemedText>
-          <ThemedText>• Check your statistics</ThemedText>
-        </ThemedView>
-      </ThemedView>
-
-      <ThemedView style={styles.sectionContainer}>
-        <ThemedText type="subtitle">Recent Activity</ThemedText>
-        <ThemedView style={styles.activityContainer}>
-          <ThemedText>Your recent scans will appear here</ThemedText>
-        </ThemedView>
-      </ThemedView>
-
-      <ThemedView style={styles.sectionContainer}>
-        <ThemedText type="subtitle">Getting Started</ThemedText>
-        <ThemedText style={styles.description}>
-          Use the camera button to scan your first receipt. We'll help you organize and track your expenses automatically.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <Animated.Text style={[animatedStyle, { fontSize: props.size, zIndex: -1 }]}>
+      {props.emoji}
+    </Animated.Text>
   );
 }
 
+function FallingEmojiLayer(): React.ReactElement {
+  const screenWidth = Dimensions.get('window').width;
+  const shuffled = [...FOOD_EMOJIS].sort(() => Math.random() - 0.5);
+  const emojis: React.ReactElement[] = [];
+
+  for (let i = 0; i < shuffled.length; i++) {
+    const emoji = shuffled[i];
+    const left = Math.floor(Math.random() * screenWidth);
+    const delay = Math.floor(Math.random() * 5000);
+    emojis.push(
+      <FallingEmoji
+        key={emoji + '-' + i}
+        emoji={emoji}
+        left={left}
+        delay={delay}
+        duration={14000}
+        size={48}
+        opacity={0.1}
+      />
+    );
+  }
+
+  return <>{emojis}</>;
+}
+
+function HomeScreen(): React.ReactElement {
+  const router = useRouter();
+
+  const handleFabPress = (): void => {
+    try {
+      impactAsync(ImpactFeedbackStyle.Medium);
+    } catch (e) {
+      console.log('Haptics not supported');
+    }
+    router.push('/(tabs)/scan');
+  };
+
+  return (
+    <View style={styles.container}>
+      <View
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+        pointerEvents="none"
+      >
+        <FallingEmojiLayer />
+      </View>
+
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.hero}>
+          <Animated.View entering={BounceIn} style={styles.heroIconWrapper}>
+            <AntDesign name="shoppingcart" size={48} color="#E36C67" />
+          </Animated.View>
+          <Text style={styles.title}>Receipt Scanner</Text>
+          <View style={styles.nameBubbleWrapper}>
+            <Text style={styles.nameBubble}>Welcome 👋</Text>
+          </View>
+          <Text style={styles.subtitle}>Your cozy space for all things receipts.</Text>
+        </View>
+
+        <Animated.View entering={FadeInDown}>
+          <BlurView intensity={60} tint="light" style={styles.card}>
+            <View style={styles.cardTitleRow}>
+              <AntDesign name="staro" size={20} color="#E36C67" />
+              <Text style={styles.cardTitleText}>Get Started</Text>
+            </View>
+            <Link href="/(tabs)/scan" asChild>
+              <Pressable style={styles.scanButton}>
+                <MaterialCommunityIcons name="camera-outline" size={20} color="#FFFDF9" />
+                <Text style={styles.scanButtonText}>Scan your first receipt</Text>
+              </Pressable>
+            </Link>
+          </BlurView>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(200)}>
+          <BlurView intensity={60} tint="light" style={styles.card}>
+            <View style={styles.cardTitleRow}>
+              <AntDesign name="save" size={18} color="#E36C67" />
+              <Text style={styles.cardTitleText}>Recent Activity</Text>
+            </View>
+            <Text style={styles.cardMuted}>No receipts yet—but this space will soon be full ✨</Text>
+          </BlurView>
+        </Animated.View>
+      </ScrollView>
+
+    </View>
+  );
+}
+
+export default HomeScreen;
+
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: '#FDEAD8',
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 100,
+    gap: 28,
+  },
+  hero: {
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 24,
+    marginBottom: 28,
+  },
+  heroIconWrapper: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: '#FFFDF9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 6,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#4A2B2B',
+    marginBottom: 4,
+  },
+  nameBubbleWrapper: {
+    backgroundColor: '#FFFDF9',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginBottom: 6,
+  },
+  nameBubble: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4A2B2B',
+    textAlign: 'center',
   },
   subtitle: {
-    opacity: 0.7,
-    fontSize: 16,
+    fontSize: 15,
+    color: '#7D6C66',
+    marginTop: 4,
+    textAlign: 'center',
   },
-  sectionContainer: {
-    gap: 12,
-    marginBottom: 24,
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+  card: {
+    backgroundColor: 'rgba(255,253,249,0.95)',
+    borderRadius: 28,
+    padding: 24,
+    marginBottom: 12,
+    overflow: 'hidden',
   },
-  actionContainer: {
-    gap: 8,
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
   },
-  activityContainer: {
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.03)',
+  cardTitleText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#4A2B2B',
+    marginLeft: 8,
   },
-  description: {
-    lineHeight: 20,
-  },
-  headerImage: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  cardMuted: {
+    fontSize: 14,
+    color: '#998D88',
+    fontStyle: 'italic',
   },
   scanButton: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 12,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    backgroundColor: '#E36C67',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 999,
+    marginTop: 10,
+    alignSelf: 'flex-start',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  scanButtonPressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.98 }],
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
   },
   scanButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '600',
+    color: '#FFFDF9',
+    marginLeft: 6,
+  },
+  fab: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 36 : 24,
+    right: 24,
+    backgroundColor: '#E36C67',
+    padding: 20,
+    borderRadius: 999,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 12,
+    elevation: 6,
   },
 });
