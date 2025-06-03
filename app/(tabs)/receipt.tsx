@@ -39,9 +39,13 @@ export default function ReceiptScreen() {
           .split('\n')
           .filter(line => line.trim())
           .map(line => {
-            const [name, price] = line.split(',').map(s => s.trim());
+            const lastComma = line.lastIndexOf(',');
+            if (lastComma === -1) return null;
+            const name = line.slice(0, lastComma).trim();
+            const price = line.slice(lastComma + 1).trim();
             return { name, price, quantity: 1 };
-          });
+          })
+          .filter((item): item is ReceiptItem => item !== null);
         setOriginalItems(items);
         
         // If there's modified data, use that instead

@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useFocusEffect } from 'expo-router';
+import Markdown from 'react-native-markdown-display';
 
 const DAY_OPTIONS = [3, 5, 7, 10, 14];
 
@@ -130,8 +131,13 @@ export default function MealPlanScreen() {
             <TouchableOpacity style={styles.resetButton} onPress={resetSelection}>
               <Text style={styles.resetButtonText}>Choose Different Days</Text>
             </TouchableOpacity>
-            <ScrollView style={styles.scrollView}>
-              <Text style={styles.mealPlanText}>{mealPlan}</Text>
+            <ScrollView 
+              style={styles.scrollView}
+              contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
+            >
+              <Markdown style={{ body: { color: '#4A2B2B', fontSize: 16 } }}>
+                {mealPlan}
+              </Markdown>
             </ScrollView>
           </View>
         ) : (

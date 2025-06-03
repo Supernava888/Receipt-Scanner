@@ -73,7 +73,7 @@ export default function ScanScreen() {
               {
                 parts: [
                   {
-                    text: "Analyze the following image and extract the food items and prices from the receipt. Return only food items and prices in plain text (fooditem, price). Do not include any other text or comments such as a header."
+                    text: "Analyze the following receipt image. For each line that contains a food item and a price, extract the full food item name and its price. Only include lines where a price (e.g., $X.XX) appears at the end of the line. Return the result as: fooditem, price (one per line). Do not include any other text or comments."
                   },
                   {
                     inlineData: {
@@ -89,6 +89,8 @@ export default function ScanScreen() {
       );
       const data = await response.json();
       const outputText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "No result found.";
+      // Log the original output from Gemini
+      console.log('Gemini original output:', outputText);
       // Clear any previous modified data when processing a new receipt
       await AsyncStorage.removeItem('modifiedReceiptData');
       await AsyncStorage.setItem('lastGeminiResult', outputText);
