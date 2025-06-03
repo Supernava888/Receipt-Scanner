@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -7,19 +7,49 @@ import {
   Text,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useLocalSearchParams, useFocusEffect } from 'expo-router';
 
 const DAY_OPTIONS = [3, 5, 7, 10, 14];
+
+interface ReceiptItem {
+  name: string;
+  price: string;
+  quantity: number;
+}
 
 export default function MealPlanScreen() {
   const [mealPlan, setMealPlan] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [selectedDays, setSelectedDays] = useState<number | null>(null);
   const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams();
+  const items = params.items ? JSON.parse(params.items as string) as ReceiptItem[] : null;
+  const previousItemsRef = useRef<string | null>(null);
 
-  const generateMealPlan = async (items: string, days: number) => {
+  // Reset state only when new items are different from previous items
+  useFocusEffect(
+    useCallback(() => {
+      if (items) {
+        const currentItemsString = JSON.stringify(items);
+        if (currentItemsString !== previousItemsRef.current) {
+          // Only reset if we have new items
+          setMealPlan(null);
+          setLoading(false);
+          setSelectedDays(null);
+          previousItemsRef.current = currentItemsString;
+        }
+      }
+    }, [items])
+  );
+
+  const generateMealPlan = async (items: ReceiptItem[], days: number) => {
     try {
       setLoading(true);
+      // Format items for the prompt
+      const itemsString = items
+        .map(item => `${item.name} (${item.quantity}x) - ${item.price}`)
+        .join(', ');
+
       const response = await fetch(
         'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyABCyWxPFf-JICQYcLABOaV0eZnnIn9cpU',
         {
@@ -32,7 +62,7 @@ export default function MealPlanScreen() {
               {
                 parts: [
                   {
-                    text: `Based on these food items from my receipt: ${items}, create a ${days}-day meal plan. 
+                    text: `Based on these food items from my receipt: ${itemsString}, create a ${days}-day meal plan. 
                     Include breakfast, lunch, and dinner for each day.
                     Include the cost for each day, average cost per meal, and total cost for the week.
                     Make sure to use the ingredients I have and prioritize for affordability.
@@ -57,23 +87,13 @@ export default function MealPlanScreen() {
     }
   };
 
-  const loadAndGenerateMealPlan = async (days: number) => {
-    try {
-      const result = await AsyncStorage.getItem('lastGeminiResult');
-      if (result) {
-        await generateMealPlan(result, days);
-      } else {
-        setMealPlan('No receipt items found. Please scan a receipt first.');
-      }
-    } catch (error) {
-      console.error('Error loading receipt data:', error);
-      setMealPlan('Error loading receipt data. Please try again.');
-    }
-  };
-
   const handleDaySelection = (days: number) => {
+    if (!items) {
+      setMealPlan('No receipt items found. Please scan a receipt first.');
+      return;
+    }
     setSelectedDays(days);
-    loadAndGenerateMealPlan(days);
+    generateMealPlan(items, days);
   };
 
   const resetSelection = () => {

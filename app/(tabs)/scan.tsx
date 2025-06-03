@@ -1,12 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CameraType, CameraView, useCameraPermissions } from 'expo-camera';
-import { useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { useRef, useState, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  Image,
 } from 'react-native';
 
 export default function ScanScreen() {
@@ -16,6 +17,13 @@ export default function ScanScreen() {
   const [photoData, setPhotoData] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  // Reset photoData when the screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      setPhotoData(null);
+    }, [])
+  );
 
   if (!permission) {
     return <View />;
@@ -44,43 +52,82 @@ export default function ScanScreen() {
         base64: true,
       });
       setPhotoData(pic.base64 || null);
-      try {
-        const response = await fetch(
-          "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyABCyWxPFf-JICQYcLABOaV0eZnnIn9cpU",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              contents: [
-                {
-                  parts: [
-                    {
-                      text: "Analyze the following image and extract the food items and prices from the receipt. Return only food items and prices in plain text (fooditem, price). Do not include any other text or comments such as a header."
-                    },
-                    {
-                      inlineData: {
-                        mimeType: "image/jpeg",
-                        data: pic.base64,
-                      },
-                    },
-                  ],
-                },
-              ],
-            }),
-          }
-        );
-        const data = await response.json();
-        const outputText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "No result found.";
-        await AsyncStorage.setItem('lastGeminiResult', outputText);
-        router.push('/receipt');
-      } catch (e) {
-        console.error("Error analyzing image:", e);
-      } finally {
-        setLoading(false);
-      }
+      setLoading(false);
     }
+  }
+
+  async function processImage() {
+    if (!photoData) return;
+    
+    setLoading(true);
+    try {
+      const response = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyABCyWxPFf-JICQYcLABOaV0eZnnIn9cpU",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: "Analyze the following image and extract the food items and prices from the receipt. Return only food items and prices in plain text (fooditem, price). Do not include any other text or comments such as a header."
+                  },
+                  {
+                    inlineData: {
+                      mimeType: "image/jpeg",
+                      data: photoData,
+                    },
+                  },
+                ],
+              },
+            ],
+          }),
+        }
+      );
+      const data = await response.json();
+      const outputText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "No result found.";
+      // Clear any previous modified data when processing a new receipt
+      await AsyncStorage.removeItem('modifiedReceiptData');
+      await AsyncStorage.setItem('lastGeminiResult', outputText);
+      router.push('/receipt');
+    } catch (e) {
+      console.error("Error analyzing image:", e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function retakePhoto() {
+    setPhotoData(null);
+  }
+
+  if (photoData) {
+    return (
+      <View style={styles.mainContainer}>
+        <Image 
+          source={{ uri: `data:image/jpeg;base64,${photoData}` }} 
+          style={styles.previewImage} 
+        />
+        <View style={styles.buttonRow}>
+          <TouchableOpacity 
+            style={[styles.button, styles.retakeButton]} 
+            onPress={retakePhoto}
+          >
+            <Text style={styles.buttonText}>Retake</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.button, loading && styles.disabledButton]}
+            onPress={processImage}
+            disabled={loading}
+          >
+            <Text style={styles.buttonText}>{loading ? 'Processing...' : 'Done'}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
   }
 
   return (
@@ -110,6 +157,10 @@ const styles = StyleSheet.create({
   },
   camera: {
     flex: 1,
+  },
+  previewImage: {
+    flex: 1,
+    resizeMode: 'contain',
   },
   permissionContainer: {
     flex: 1,
@@ -163,6 +214,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 3 },
     shadowRadius: 6,
+  },
+  retakeButton: {
+    backgroundColor: '#4A2B2B',
   },
   disabledButton: {
     backgroundColor: '#D28A89',
