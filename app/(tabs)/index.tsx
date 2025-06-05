@@ -1,8 +1,8 @@
 import { AntDesign, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
-import { Link, useRouter } from 'expo-router';
-import React, { useEffect } from 'react';
+import { Link, useRouter, useFocusEffect } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import {
   Dimensions,
   Platform,
@@ -12,6 +12,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import 'react-native-reanimated';
 import Animated, {
   BounceIn,
@@ -92,6 +93,18 @@ function FallingEmojiLayer(): React.ReactElement {
 function HomeScreen(): React.ReactElement {
   const router = useRouter();
 
+  // Recent receipts state
+  const [recentReceipts, setRecentReceipts] = useState<any[]>([]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      AsyncStorage.getItem('recentReceipts').then(data => {
+        if (data) setRecentReceipts(JSON.parse(data));
+        else setRecentReceipts([]);
+      });
+    }, [])
+  );
+
   const handleFabPress = (): void => {
     try {
       impactAsync(ImpactFeedbackStyle.Medium);
@@ -131,7 +144,7 @@ function HomeScreen(): React.ReactElement {
             <Link href="/(tabs)/scan" asChild>
               <Pressable style={styles.scanButton}>
                 <MaterialCommunityIcons name="camera-outline" size={20} color="#FFFDF9" />
-                <Text style={styles.scanButtonText}>Scan your first receipt</Text>
+                <Text style={styles.scanButtonText}>Scan your receipt</Text>
               </Pressable>
             </Link>
           </BlurView>
@@ -143,7 +156,35 @@ function HomeScreen(): React.ReactElement {
               <AntDesign name="save" size={18} color="#E36C67" />
               <Text style={styles.cardTitleText}>Recent Activity</Text>
             </View>
-            <Text style={styles.cardMuted}>No receipts yet—but this space will soon be full ✨</Text>
+            {recentReceipts.length === 0 ? (
+              <Text style={styles.cardMuted}>No receipts yet—but this space will soon be full ✨</Text>
+            ) : (
+              recentReceipts.map(receipt => (
+                <View key={receipt.id} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, justifyContent: 'space-between' }}>
+                  <Pressable
+                    style={{ flex: 1 }}
+                    onPress={() => router.push({ pathname: '/receipt', params: { receiptId: receipt.id } })}
+                  >
+                    <Text style={{ color: '#4A2B2B', fontWeight: '600' }}>
+                      {new Date(receipt.date).toLocaleString()} - ${receipt.total.toFixed(2)}
+                    </Text>
+                    <Text style={{ color: '#998D88', fontSize: 13 }}>
+                      {receipt.items.slice(0, 2).map((i: any) => i.name).join(', ')}{receipt.items.length > 2 ? '...' : ''}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={async () => {
+                      const filtered = recentReceipts.filter(r => r.id !== receipt.id);
+                      setRecentReceipts(filtered);
+                      await AsyncStorage.setItem('recentReceipts', JSON.stringify(filtered));
+                    }}
+                    style={{ marginLeft: 12, padding: 6 }}
+                  >
+                    <AntDesign name="delete" size={20} color="#E36C67" />
+                  </Pressable>
+                </View>
+              ))
+            )}
           </BlurView>
         </Animated.View>
       </ScrollView>

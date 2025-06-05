@@ -89,11 +89,42 @@ export default function ScanScreen() {
       );
       const data = await response.json();
       const outputText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "No result found.";
-      // Log the original output from Gemini
-      console.log('Gemini original output:', outputText);
+
       // Clear any previous modified data when processing a new receipt
       await AsyncStorage.removeItem('modifiedReceiptData');
       await AsyncStorage.setItem('lastGeminiResult', outputText);
+
+      // Parse items for recent receipts
+      const items = outputText
+        .split('\n')
+        .filter((line: string) => line.trim())
+        .map((line: string) => {
+          const lastComma = line.lastIndexOf(',');
+          if (lastComma === -1) return null;
+          const name = line.slice(0, lastComma).trim();
+          const price = line.slice(lastComma + 1).trim();
+          return { name, price, quantity: 1 };
+        })
+        .filter((item: { name: string; price: string; quantity: number } | null): item is { name: string; price: string; quantity: number } => item !== null);
+      const total = items.reduce((sum: number, item: { name: string; price: string; quantity: number }) => {
+        const price = parseFloat(item.price.replace(/[^0-9.-]+/g, ''));
+        return sum + (isNaN(price) ? 0 : price) * (item.quantity || 1);
+      }, 0);
+      const newReceipt = {
+        id: Date.now().toString(),
+        date: new Date().toISOString(),
+        items,
+        total,
+      };
+      let recentReceipts = [];
+      try {
+        const stored = await AsyncStorage.getItem('recentReceipts');
+        if (stored) recentReceipts = JSON.parse(stored);
+      } catch {}
+      recentReceipts.unshift(newReceipt);
+      if (recentReceipts.length > 10) recentReceipts = recentReceipts.slice(0, 10);
+      await AsyncStorage.setItem('recentReceipts', JSON.stringify(recentReceipts));
+
       router.push('/receipt');
     } catch (e) {
       console.error("Error analyzing image:", e);
